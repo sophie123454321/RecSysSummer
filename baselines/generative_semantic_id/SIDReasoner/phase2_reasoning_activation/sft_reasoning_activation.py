@@ -380,7 +380,8 @@ def main():
     use_wandb = args.report_to == "wandb" and _WANDB_AVAILABLE and is_rank_0()
     if use_wandb:
         os.environ["WANDB_PROJECT"] = args.wandb_project
-        wandb.login(key="3f14084582ffbf0986b305f813aea34ca59c77c5")
+        wandb.login()
+        #wandb.login(key="3f14084582ffbf0986b305f813aea34ca59c77c5")
         wandb.init(project=args.wandb_project, name=args.wandb_run_name, config=vars(args))
 
     category = CATEGORY_DICT.get(args.category, "items")
