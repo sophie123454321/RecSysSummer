@@ -133,7 +133,7 @@ OUTPUT REQUIREMENTS:
 
 REQUIRED REASONING PROCESS:
 
-Before writing the final reasoning monologue, internally perform the following steps strictly in the specified order. Do not skip, merge, or reorder steps. Every conclusion must be supported by evidence from the interaction history and item descriptions before it is used in later reasoning.
+Before writing the final reasoning monologue in step 3, internally perform steps 1-2 strictly in the specified order. Do not skip, merge, or reorder steps. Every conclusion must be supported by evidence from the interaction history and item descriptions before it is used in later reasoning.
 
 1. Summarize observable patterns.
 
@@ -141,29 +141,15 @@ Begin by examining every interaction chronologically. Group items into shared th
 
 For every group, identify:
 
-common themes or semantic concepts,
-recurring attributes,
-notable user constraints or limitations (e.g., platform ownership, dietary restrictions, preferred brands, required compatibility),
-behaviors that repeatedly occur,
-equally important behaviors that are notably absent despite sufficient opportunities to appear.
-
-Focus only on directly observable evidence at this stage. Do not infer motivations yet.
-
-2. Evaluate evidence strength.
-
-After identifying each group, evaluate how strongly the interaction history supports it before using it in later reasoning.
-
-Classify the evidence using qualitative confidence such as:
-
-Strong indication: repeatedly observed across many interactions or over long periods.
-Moderate evidence: supported by several related interactions.
-Weak signal: observed only once or twice.
-One-off example: isolated observation that should not be generalized.
-Noise: likely incidental or unsupported.
+common themes or semantic concepts, recurring attributes, notable user constraints or limitations (e.g., platform ownership, dietary restrictions, preferred brands, required compatibility), behaviors that repeatedly occur, equally important behaviors that are notably absent despite sufficient opportunities to appear.
 
 Repeated behaviors should always outweigh isolated examples. Clearly acknowledge uncertainty whenever evidence is limited or conflicting.
 
-3. Infer underlying motivations.
+Focus only on directly observable evidence at this stage. Do not infer motivations yet.
+
+After identifying each group, evaluate how strongly the interaction history supports it before using it in later reasoning.
+
+2. Infer underlying motivations.
 
 Only after determining evidence strength, infer the underlying motivations that may explain each group with at least moderate evidence. Go beyond simply naming genres or categories.
 
@@ -173,41 +159,13 @@ teach practical skills, tell engaging stories, provide challenge (mental and/or 
 
 Support every inferred motivation with evidence from multiple historical interactions whenever possible.
 
-4. Evaluate diversity versus specialization.
-
-Determine whether the interaction history reflects specialization within a narrow set of interests or broad exploration across multiple unrelated categories.
-
-Consider:
-
-breadth versus depth, repeated revisiting of similar concepts, willingness to branch into adjacent topics, consistency versus experimentation.
-
-Adjust later conclusions according to this behavior.
-
-5. Trace preference evolution over time.
-
-Using the chronological ordering established earlier, analyze how preferences develop throughout the interaction history.
-
-Separate:
-
-stable long-term preferences, recurring limitations or constraints, recent shifts, emerging interests, fading interests.
-
-Determine whether newer interactions reinforce earlier behaviors, gradually expand into adjacent interests, or introduce genuinely new directions.
-
-When appropriate, consider external temporal influences such as seasonal trends, holidays, major releases, or other time-dependent effects that could plausibly explain temporary changes in behavior.
-
-6. Resolve conflicting evidence.
-
-If multiple preference groups compete or appear inconsistent, do not discard one in favor of another.
-
-Instead:
-
-explain the evidence supporting each preference, discuss possible trade-offs, determine whether the user alternates between interests, satisfies different needs at different times, or exhibits genuine uncertainty. Reduce confidence appropriately when conflicts cannot be resolved.
-
-Do not force a single explanation when multiple plausible interpretations exist.
-
-7. Synthesize the prediction.
+3. Summarize preference evolution over time.
 
 Only after completing all previous steps, synthesize the evidence into a concise first-person reasoning monologue.
+
+Using the chronological ordering established earlier, analyze how preferences develop throughout the interaction history, such as: stable long-term preferences, recurring limitations or constraints, recent shifts, emerging interests, fading interests.
+
+Determine whether newer interactions reinforce earlier behaviors, gradually expand into adjacent interests, or introduce genuinely new directions.
 
 Base every conclusion on previously established evidence. Favor broader behavioral tendencies over specific items, acknowledge uncertainty where appropriate, and end with a non-deterministic summary describing the kinds of items the user may enjoy rather than predicting a specific item.
 
