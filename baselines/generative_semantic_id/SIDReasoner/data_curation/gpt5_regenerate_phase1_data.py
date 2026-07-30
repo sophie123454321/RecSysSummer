@@ -60,6 +60,7 @@ from gpt5_endpoint_test import ENDPOINTS, get_GPT5_client
 # Config
 # --------------------------------------------------------------------------------------
 HF_REPO = "yufan/recsys-genrec-dataset"
+
 CATEGORIES = ["Video_Games", "Office_Products", "Industrial_and_Scientific"]
 MODEL = "gpt-5.4"                 # the only model we use; available on every endpoint
 
@@ -111,6 +112,8 @@ USER_STAGE1_PROMPT = """You are an expert recommendation system analyst analyzin
 
 Your goal is to reason through the user's history and predict what the item the user would be interested in, explaining your reasoning process from your analytical perspective in first person.
 
+CRITICAL: Always use ONLY the SID format when referring to items. Never use titles, names, or `Item SID:` prefixes.
+
 Given user interaction history, item descriptions, and reference next item, produce a concise first-person reasoning from an analyst's perspective to predict what kind of item the user may like in the next interactions. The reference item is only for internal guidance — reason entirely based on interaction history and item descriptions. Never mention or discuss the reference item in your reasoning. Write as a genuine real-time prediction analyzing user behavior patterns.
 
 - User Interaction history: {history_titles}
@@ -124,9 +127,91 @@ OUTPUT REQUIREMENTS:
 2. Analyze general user preferences (genres, themes, attributes, motivations) and engagement patterns based on history.
 3. Express potential interests or tendencies rather than deterministic conclusions or single outcomes.
 4. Adapt depth to history length: brief key observations for short histories; step-by-step tracing of interest shifts for longer ones. Base predictions on observed patterns.
-5. CRITICAL: Always use ONLY the SID format when referring to items. Never use titles, names, or `Item SID:` prefixes.
+5. ALWAYS substitute real item names (historical and reference) with their SID format (e.g., `<a_XXX><b_YYY><c_ZZZ>`).
 6. Never mention 'reference item' or imply knowledge of the target. Reason as if predicting blindly.
 7. Start directly with reasoning. Do NOT predict a specific next item. End with a non-deterministic summary of likely interests (e.g., `may enjoy`, `tends to prefer`).
+
+REQUIRED REASONING PROCESS:
+
+Before writing the final reasoning monologue, internally perform the following steps strictly in the specified order. Do not skip, merge, or reorder steps. Every conclusion must be supported by evidence from the interaction history and item descriptions before it is used in later reasoning.
+
+1. Summarize observable patterns.
+
+Begin by examining every interaction chronologically. Group items into shared themes, genres, attributes, use cases, or higher-level semantic concepts rather than treating each item independently. Preserve chronological order so changes in behavior remain visible.
+
+For every group, identify:
+
+common themes or semantic concepts,
+recurring attributes,
+notable user constraints or limitations (e.g., platform ownership, dietary restrictions, preferred brands, required compatibility),
+behaviors that repeatedly occur,
+equally important behaviors that are notably absent despite sufficient opportunities to appear.
+
+Focus only on directly observable evidence at this stage. Do not infer motivations yet.
+
+2. Evaluate evidence strength.
+
+After identifying each group, evaluate how strongly the interaction history supports it before using it in later reasoning.
+
+Classify the evidence using qualitative confidence such as:
+
+Strong indication: repeatedly observed across many interactions or over long periods.
+Moderate evidence: supported by several related interactions.
+Weak signal: observed only once or twice.
+One-off example: isolated observation that should not be generalized.
+Noise: likely incidental or unsupported.
+
+Repeated behaviors should always outweigh isolated examples. Clearly acknowledge uncertainty whenever evidence is limited or conflicting.
+
+3. Infer underlying motivations.
+
+Only after determining evidence strength, infer the underlying motivations that may explain each group with at least moderate evidence. Go beyond simply naming genres or categories.
+
+Reason about why the user repeatedly selects these items. For example, determine whether the user tends to prefer items that:
+
+teach practical skills, tell engaging stories, provide challenge (mental and/or physical), foster competition, encourage creativity, emphasize realism, prioritize efficiency, encourage exploration, provide relaxation, enable social interaction (with friends and/or strangers), support collecting or completion, encourage mastery or progression, etc.
+
+Support every inferred motivation with evidence from multiple historical interactions whenever possible.
+
+4. Evaluate diversity versus specialization.
+
+Determine whether the interaction history reflects specialization within a narrow set of interests or broad exploration across multiple unrelated categories.
+
+Consider:
+
+breadth versus depth, repeated revisiting of similar concepts, willingness to branch into adjacent topics, consistency versus experimentation.
+
+Adjust later conclusions according to this behavior.
+
+5. Trace preference evolution over time.
+
+Using the chronological ordering established earlier, analyze how preferences develop throughout the interaction history.
+
+Separate:
+
+stable long-term preferences, recurring limitations or constraints, recent shifts, emerging interests, fading interests.
+
+Determine whether newer interactions reinforce earlier behaviors, gradually expand into adjacent interests, or introduce genuinely new directions.
+
+When appropriate, consider external temporal influences such as seasonal trends, holidays, major releases, or other time-dependent effects that could plausibly explain temporary changes in behavior.
+
+6. Resolve conflicting evidence.
+
+If multiple preference groups compete or appear inconsistent, do not discard one in favor of another.
+
+Instead:
+
+explain the evidence supporting each preference, discuss possible trade-offs, determine whether the user alternates between interests, satisfies different needs at different times, or exhibits genuine uncertainty. Reduce confidence appropriately when conflicts cannot be resolved.
+
+Do not force a single explanation when multiple plausible interpretations exist.
+
+7. Synthesize the prediction.
+
+Only after completing all previous steps, synthesize the evidence into a concise first-person reasoning monologue.
+
+Base every conclusion on previously established evidence. Favor broader behavioral tendencies over specific items, acknowledge uncertainty where appropriate, and end with a non-deterministic summary describing the kinds of items the user may enjoy rather than predicting a specific item.
+
+Throughout every step, ALWAYS explain conclusions using concrete evidence from the interaction history. Every preference, limitation, motivation, or inferred tendency must be justified by as many relevant historical interactions and details as possible. Never introduce unsupported assumptions or rely on isolated examples without explicitly labeling them as weak evidence.
 
 Your Reasoning:"""
 
