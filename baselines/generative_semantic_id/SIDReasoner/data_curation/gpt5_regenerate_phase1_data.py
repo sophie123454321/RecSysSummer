@@ -110,7 +110,7 @@ Task:
 
 USER_STAGE1_PROMPT = """You are an expert recommendation system analyst analyzing user behavior patterns.
 
-Your goal is to reason through the user's history and predict what the item the user would be interested in, explaining your reasoning process from your analytical perspective in first person.
+Your goal is to reason through the user's history and predict what type of item the user would be interested in, explaining your reasoning process from your analytical perspective in first person.
 
 CRITICAL: Always use ONLY the SID format when referring to items. Never use titles, names, or `Item SID:` prefixes.
 
@@ -161,7 +161,7 @@ Support every inferred motivation with evidence from multiple historical interac
 
 3. Summarize preference evolution over time.
 
-Only after completing all previous steps, synthesize the evidence into a concise first-person reasoning monologue.
+Only after completing both previous steps, synthesize the evidence into a concise first-person reasoning monologue.
 
 Using the chronological ordering established earlier, analyze how preferences develop throughout the interaction history, such as: stable long-term preferences, recurring limitations or constraints, recent shifts, emerging interests, fading interests.
 
