@@ -167,6 +167,8 @@ def run_signature(args: argparse.Namespace, source_config: str) -> str:
         "seed": args.seed,
         "max_prompt_length": args.max_prompt_length,
         "max_new_tokens": args.max_new_tokens,
+        "num_shards": args.num_shards,
+        "shard_index": args.shard_index,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:20]
 
@@ -255,6 +257,8 @@ def main() -> None:
     parser.add_argument("--beam-size", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--limit", type=int, default=-1)
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-prompt-length", type=int, default=1024)
     parser.add_argument("--max-new-tokens", type=int, default=1024)
@@ -277,6 +281,12 @@ def main() -> None:
         parser.error(f"--beam-size must be at least {max(RANK_CUTOFFS)}")
     if args.batch_size < 1:
         parser.error("--batch-size must be at least 1")
+    if args.num_shards < 1:
+        parser.error("--num-shards must be at least 1")
+    if not 0 <= args.shard_index < args.num_shards:
+        parser.error("--shard-index must be in [0, --num-shards)")
+    if args.hf_repo and args.num_shards > 1:
+        parser.error("merge distributed shard outputs before using --hf-repo")
     if args.max_num_batched_tokens < args.max_prompt_length + args.max_new_tokens:
         parser.error("--max-num-batched-tokens must cover one full sequence")
 
@@ -298,6 +308,12 @@ def main() -> None:
         )
     if args.limit > 0:
         source = source.select(range(min(args.limit, len(source))))
+    if args.num_shards > 1:
+        source = source.shard(
+            num_shards=args.num_shards,
+            index=args.shard_index,
+            contiguous=True,
+        )
 
     output_dir = Path(args.out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -463,6 +479,8 @@ def main() -> None:
         "checkpoint": args.checkpoint,
         "beam_size": args.beam_size,
         "source_rows": len(source),
+        "num_shards": args.num_shards,
+        "shard_index": args.shard_index,
         "decided_rows": decided_count,
         "cumulative_accepted_rows": cumulative_counts,
         "exclusive_rank_categories": exclusive_counts,
