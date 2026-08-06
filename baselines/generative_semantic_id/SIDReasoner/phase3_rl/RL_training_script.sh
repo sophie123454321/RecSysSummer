@@ -78,6 +78,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.val_kwargs.n=1 \
     actor_rollout_ref.rollout.val_kwargs.do_sample=False \
     actor_rollout_ref.rollout.val_kwargs.temperature=0.0 \
+    +actor_rollout_ref.rollout.sid_constrained_beam_size=10 \
     +actor_rollout_ref.rollout.sid_validation_beam_size=10 \
     +actor_rollout_ref.rollout.sid_category=Video_Games \
     +actor_rollout_ref.rollout.sid_length=3 \
@@ -97,12 +98,3 @@ python3 -m verl.trainer.main_ppo \
     trainer.test_freq=50 \
     trainer.total_epochs=10 "$@"
 } > "${log_file}" 2>&1
-
-# ----------------------------------------------------------------------------
-# To enable SID beam search (verl B.1 port), add these overrides above:
-#     +actor_rollout_ref.rollout.sid_beam_size=<N> \
-#     +actor_rollout_ref.rollout.sid_length=3 \
-# (both required, sid_beam_size > 1). Recommendation metrics require SID length 3.
-# They are declared fields on RolloutConfig
-# in verl, so the `+` CLI override lands correctly.
-# ----------------------------------------------------------------------------
