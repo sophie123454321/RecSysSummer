@@ -28,7 +28,7 @@ NUM_EPOCHS=1
 EVAL_CUDA_LIST="0,1,2,3,4,5,6,7"
 EVAL_OUTPUT_DIR="${OUTPUT_DIR}/recsys_eval"
 EVAL_NUM_SAMPLES=-1
-WANDB_PROJECT="SIDReasoner_Phase2"
+WANDB_PROJECT="SIDReasoner_Phase2_Rejection_Sampling_1_Reasoning_Trace"
 WANDB_RUN_ID="${RUN_NAME}-$(date -u +%Y%m%dT%H%M%SZ)"
 PRETRAIN_METRICS="${EVAL_OUTPUT_DIR}/pretrain/metrics.json"
 

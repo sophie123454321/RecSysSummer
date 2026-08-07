@@ -24,7 +24,7 @@ import functools
 import numpy as np
 import pandas as pd
 
-HF_REPO = os.environ.get("SIDR_HF_REPO", "budgiesarecooliguess/genrec_reasoning_new")
+HF_REPO = os.environ.get("SIDR_HF_REPO", "yufan/recsys-genrec-dataset-refresh-gpt5.4")
 
 CATEGORIES = ["Video_Games"]
 
