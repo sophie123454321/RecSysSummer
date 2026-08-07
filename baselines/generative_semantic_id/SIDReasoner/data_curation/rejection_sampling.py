@@ -14,7 +14,8 @@ python data_curation/rejection_sampling.py \
   --checkpoint ./output_dir/Video_Games_stage3_rl/global_step_XX/actor_merged \
   --category Video_Games \
   --hf-repo YOUR_NAME/YOUR_DATASET \
-  --hf-config Video_Games_reasoning
+  --hf-config Video_Games_reasoning \
+  --dataset-half first
 
 Outputs appear under rejection_sampled_phase2/
 
@@ -167,6 +168,7 @@ def run_signature(args: argparse.Namespace, source_config: str) -> str:
         "seed": args.seed,
         "max_prompt_length": args.max_prompt_length,
         "max_new_tokens": args.max_new_tokens,
+        "dataset_half": args.dataset_half,
         "num_shards": args.num_shards,
         "shard_index": args.shard_index,
     }
@@ -244,6 +246,17 @@ def batched(values: list[Any], batch_size: int):
         yield values[start : start + batch_size]
 
 
+def select_dataset_half(source: Any, dataset_half: str) -> Any:
+    if dataset_half == "all":
+        return source
+    midpoint = (len(source) + 1) // 2
+    if dataset_half == "first":
+        return source.select(range(midpoint))
+    if dataset_half == "second":
+        return source.select(range(midpoint, len(source)))
+    raise ValueError(f"unsupported dataset half: {dataset_half}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Keep Phase-2 rows whose target appears in a Phase-3 top-k SID beam."
@@ -257,6 +270,7 @@ def main() -> None:
     parser.add_argument("--beam-size", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--limit", type=int, default=-1)
+    parser.add_argument("--dataset-half", choices=("all", "first", "second"), default="all")
     parser.add_argument("--num-shards", type=int, default=1)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
@@ -308,6 +322,7 @@ def main() -> None:
         )
     if args.limit > 0:
         source = source.select(range(min(args.limit, len(source))))
+    source = select_dataset_half(source, args.dataset_half)
     if args.num_shards > 1:
         source = source.shard(
             num_shards=args.num_shards,
@@ -479,6 +494,7 @@ def main() -> None:
         "checkpoint": args.checkpoint,
         "beam_size": args.beam_size,
         "source_rows": len(source),
+        "dataset_half": args.dataset_half,
         "num_shards": args.num_shards,
         "shard_index": args.shard_index,
         "decided_rows": decided_count,
