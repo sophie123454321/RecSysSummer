@@ -30,7 +30,7 @@ export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 # ================================
 n_gpus_per_node=8
 nnodes=1
-experiment_name="Video_Games_stage3_rl_no_kl_Qwen3-1.7B"
+experiment_name="Video_Games_stage3_rl_constrained_sid_sampling_em_outcome_only_no_kl_Qwen3-1.7B"
 stage2_checkpoint="./output_dir/Video_Games_stage2_reasoning_activation_Qwen3-1.7B/final_checkpoint"
 checkpoint_dir="./output_dir/${experiment_name}"
 log_file="./logs/${experiment_name}.log"
@@ -76,7 +76,7 @@ python3 -m verl.trainer.main_ppo \
     +trainer.wandb_exclude_prefixes='["val-core/","val-aux/","training/","timing_s/","timing_per_token_ms/","response_length_non_aborted/","global_seqlen/","perf/","critic/","actor/"]' \
     custom_reward_function.path="./verl/utils/reward_score/direct_recommendation_StepRule_Games.py" \
     custom_reward_function.name="rule_base_reward" \
-    trainer.project_name='SIDReasoner_Phase3_Rejection_Sampling_1_Reasoning_Trace' \
+    trainer.project_name='SIDReasoner_Phase3_MetricsV2' \
     trainer.experiment_name="${experiment_name}" \
     trainer.default_local_dir="${checkpoint_dir}" \
     trainer.n_gpus_per_node=$n_gpus_per_node \

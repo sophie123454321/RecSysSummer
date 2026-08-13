@@ -66,6 +66,13 @@ from verl.utils.tracking import ValidationGenerationsLogger
 
 _WANDB_METRIC_ORDER = (
     "core_metrics_train/sid_match_reward_mean",
+    "core_metrics_train/rule_reward_mean",
+    "core_metrics_train/diversity_reward_mean",
+    "core_metrics_train/format_reward_mean",
+    "core_metrics_train/history_summary_grounding_reward_mean",
+    "core_metrics_train/future_interests_grounding_reward_mean",
+    "core_metrics_train/history_reference_coverage_mean",
+    "core_metrics_train/process_reward_mean",
     "core_metrics_train/prefix_1_match_rate",
     "core_metrics_train/prefix_2_match_rate",
     "core_metrics_train/exact_match_rate",
@@ -73,9 +80,17 @@ _WANDB_METRIC_ORDER = (
     "core_metrics_train/sid_match_all_wrong_group_rate",
     "core_metrics_train/sid_match_uniform_partial_group_rate",
     "core_metrics_train/sid_match_all_correct_group_rate",
+    "core_metrics_train/process_active_group_rate",
     "core_metrics_train/entropy",
     "core_metrics_train/response_clip_ratio",
     "core_metrics_val/sid_match_reward_mean",
+    "core_metrics_val/rule_reward_mean",
+    "core_metrics_val/diversity_reward_mean",
+    "core_metrics_val/format_reward_mean",
+    "core_metrics_val/history_summary_grounding_reward_mean",
+    "core_metrics_val/future_interests_grounding_reward_mean",
+    "core_metrics_val/history_reference_coverage_mean",
+    "core_metrics_val/process_reward_mean",
     "core_metrics_val/prefix_1_match_rate",
     "core_metrics_val/prefix_2_match_rate",
     "core_metrics_val/exact_match_rate",
@@ -153,6 +168,13 @@ def _compute_core_metrics(batch, metrics):
 
     reward_extra_metrics = {
         "sid_match_reward": "core_metrics_train/sid_match_reward_mean",
+        "rule_reward": "core_metrics_train/rule_reward_mean",
+        "diversity_reward": "core_metrics_train/diversity_reward_mean",
+        "format_reward": "core_metrics_train/format_reward_mean",
+        "history_summary_grounding_reward": "core_metrics_train/history_summary_grounding_reward_mean",
+        "future_interests_grounding_reward": "core_metrics_train/future_interests_grounding_reward_mean",
+        "history_reference_coverage": "core_metrics_train/history_reference_coverage_mean",
+        "process_reward": "core_metrics_train/process_reward_mean",
         "prefix_1_match": "core_metrics_train/prefix_1_match_rate",
         "prefix_2_match": "core_metrics_train/prefix_2_match_rate",
         "exact_match": "core_metrics_train/exact_match_rate",
@@ -163,6 +185,7 @@ def _compute_core_metrics(batch, metrics):
 
     active_group_metrics = {
         "sid_match_reward": "core_metrics_train/sid_match_active_group_rate",
+        "process_reward": "core_metrics_train/process_active_group_rate",
     }
     if "uid" in batch.non_tensor_batch:
         sample_uids = batch.non_tensor_batch["uid"]
@@ -453,6 +476,19 @@ class RayPPOTrainer:
         self.config = config
         self.reward_fn = reward_fn
         self.val_reward_fn = val_reward_fn
+
+        sid_sample_size = self.config.actor_rollout_ref.rollout.get("sid_constrained_sample_size", None)
+        if sid_sample_size is not None:
+            if sid_sample_size != 1:
+                raise ValueError("sid_constrained_sample_size must be exactly 1")
+            if self.config.actor_rollout_ref.actor.strategy not in {"fsdp", "fsdp2"}:
+                raise ValueError("Constrained SID sampling currently requires an FSDP actor")
+            if self.config.actor_rollout_ref.actor.entropy_coeff != 0:
+                raise ValueError("Constrained SID sampling requires actor entropy_coeff=0")
+            if self.config.actor_rollout_ref.actor.ulysses_sequence_parallel_size != 1:
+                raise ValueError("Constrained SID sampling requires Ulysses sequence parallel size 1")
+            if self.config.actor_rollout_ref.model.get("use_fused_kernels", False):
+                raise ValueError("Constrained SID sampling is incompatible with fused actor kernels")
 
         self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
         assert self.hybrid_engine, "Currently, only support hybrid engine"
@@ -781,10 +817,27 @@ class RayPPOTrainer:
 
         data_sources = np.concatenate(data_source_lst, axis=0)
 
-        data_src2var2metric2val = process_validation_metrics(data_sources, sample_uids, reward_extra_infos_dict)
+        process_reward_keys = {
+            "history_summary_grounding_reward",
+            "future_interests_grounding_reward",
+            "format_reward",
+            "history_reference_coverage",
+            "process_reward",
+        }
+        validation_reward_info = {
+            key: values for key, values in reward_extra_infos_dict.items() if key not in process_reward_keys
+        }
+        data_src2var2metric2val = process_validation_metrics(data_sources, sample_uids, validation_reward_info)
         metric_dict = {}
         validation_core_metrics = {
             "sid_match_reward": "core_metrics_val/sid_match_reward_mean",
+            "rule_reward": "core_metrics_val/rule_reward_mean",
+            "diversity_reward": "core_metrics_val/diversity_reward_mean",
+            "format_reward": "core_metrics_val/format_reward_mean",
+            "history_summary_grounding_reward": "core_metrics_val/history_summary_grounding_reward_mean",
+            "future_interests_grounding_reward": "core_metrics_val/future_interests_grounding_reward_mean",
+            "history_reference_coverage": "core_metrics_val/history_reference_coverage_mean",
+            "process_reward": "core_metrics_val/process_reward_mean",
             "prefix_1_match": "core_metrics_val/prefix_1_match_rate",
             "prefix_2_match": "core_metrics_val/prefix_2_match_rate",
             "exact_match": "core_metrics_val/exact_match_rate",
@@ -1255,6 +1308,17 @@ class RayPPOTrainer:
                     # TODO: Decouple the DP balancing and mini-batching.
                     if self.config.trainer.balance_batch:
                         self._balance_batch(batch, metrics=metrics)
+                    if "sid_token_mask" in batch.batch:
+                        batch_size = len(batch.batch)
+                        prompt_uids = batch.non_tensor_batch.get("uid", [])
+                        if len(prompt_uids) != batch_size:
+                            raise ValueError("Prompt UID metadata is not aligned with sampled SID responses")
+                        expected_prompt_count = batch_size // self.config.actor_rollout_ref.rollout.n
+                        _, prompt_counts = np.unique(prompt_uids, return_counts=True)
+                        if len(prompt_counts) != expected_prompt_count or not np.all(
+                            prompt_counts == self.config.actor_rollout_ref.rollout.n
+                        ):
+                            raise ValueError("Each prompt must have exactly rollout.n constrained trajectories")
 
                     # compute global_valid tokens
                     batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()

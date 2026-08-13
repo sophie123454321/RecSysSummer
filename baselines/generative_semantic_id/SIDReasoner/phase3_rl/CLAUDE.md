@@ -53,6 +53,21 @@ With both switches disabled, verl does not register a `RefPolicy` worker, does n
 compute reference-policy log probabilities, does not add KL to the actor loss, and
 passes the custom rule-based reward directly into GRPO advantage estimation.
 
+### Outcome-only reward
+
+This branch is the constrained-sampling exact-match baseline. Each training
+trajectory samples one catalog-valid three-token SID after its reasoning. The
+custom reward returns `1` only when that sampled SID exactly matches the target
+and `0` otherwise. Standard prompt-group GRPO normalizes this outcome reward and
+broadcasts the resulting advantage across the sampled reasoning and SID actions.
+
+For a controlled comparison with the process-reward branch, the reward function
+also computes and logs strict V4 format, history-summary grounding,
+future-interests grounding, history-reference coverage, their aggregate process
+score, and process active-group rate. These are diagnostics only: they stay in
+`reward_extra_info` and never enter `compute_advantage`, the policy loss, or the
+training `score`.
+
 Observed final recommendation results:
 
 | Variant | Office_Products NDCG@10 / R@10 | Video_Games NDCG@10 / R@10 | Industrial_and_Scientific NDCG@10 / R@10 |
@@ -73,7 +88,8 @@ ablation.
 
 The script **defaults to the `Video_Games` domain end‑to‑end** — data, reward, and the
 **wandb run name** all match the Games checkpoint above. Concretely the script sets
-`trainer.experiment_name=Video_Games_stage3_rl_no_kl_Qwen3-1.7B` (this is the wandb run
+`trainer.experiment_name=Video_Games_stage3_rl_constrained_sid_sampling_em_outcome_only_no_kl_Qwen3-1.7B`
+(this is the wandb run
 name, under project `SIDReasoner_Phase3_MetricsV2`), `data.*=.../Video_Games/*.parquet`, and
 `custom_reward_function.path=.../direct_recommendation_StepRule_Games.py`. So the
 launch command above is all you need — you do **not** have to override data / reward /
@@ -148,13 +164,16 @@ The vLLM rollout worker loads the selected domain's catalog and builds a token-l
 | --- | --- | --- |
 | `hf_data.load_sid_indices(sid_category)` | `<cat>_catalog` (train) | `sid_tokens` |
 
-- Each rollout first samples reasoning, discards the sampled suffix after `</think>`, then
-  greedily generates three SID tokens. At each position, `allowed_token_ids` contains only
-  catalog-valid continuations, so the final SID is always a real catalog path.
-- The PPO `response_mask` covers only the sampled reasoning. The deterministic SID and EOS
-  remain visible to the reward parser but are excluded from actor, entropy, and KL losses.
-- Reward is only the **hit reward**: 0.25, then ×2, then ×2 as SID tokens *a → b → c*
-  match `ground_truth`. There is no separate valid-SID reward.
+- Each of the 16 GRPO rollouts samples one reasoning, discards the sampled suffix after
+  `</think>`, then samples one three-token SID path. At each position, `allowed_token_ids`
+  contains only catalog-valid continuations, so the sampled SID is a real catalog path.
+- Training reward is exact match only. Standard prompt-level GRPO compares the 16 complete
+  `reasoning + SID` trajectories and broadcasts each trajectory's advantage to both spans.
+- SID old/new log probabilities are normalized over the trie-allowed actions, so all three
+  sampled SID tokens contribute actor gradients. The normalized separator and EOS remain
+  outside the actor loss.
+- Validation remains deterministic reasoning followed by catalog-constrained beam-10 and logs
+  HR/NDCG@1/3/5/10, so the final evaluator is unchanged.
 
 ## Environment
 

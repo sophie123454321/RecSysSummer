@@ -57,7 +57,7 @@ from datasets import load_dataset
 # --------------------------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------------------------
-HF_REPO = "budgiesarecooliguess/genrec_reasoning_new"
+HF_REPO = "yufan/recsys-genrec-dataset"
 CATEGORIES = ["Video_Games"]
 
 MODEL = "gpt-5.6-sol"

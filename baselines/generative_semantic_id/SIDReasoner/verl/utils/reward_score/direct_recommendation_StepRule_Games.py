@@ -15,6 +15,12 @@
 import math
 import re
 from typing import Optional
+
+from verl.utils.reward_score.sid_reasoning_format import (
+    calculate_process_rewards,
+    extract_history_sids_from_question,
+)
+
 _SOLUTION_CLIP_CHARS = 50
 
 
@@ -44,11 +50,28 @@ def extract_solution(solution_str, method="strict"):
     return None
     
 
-def calculate_ndcg_at_10(beam_predictions: list[str], ground_truth_sids: list[str]) -> tuple[float, int]:
-    for rank, prediction in enumerate(beam_predictions[:10], start=1):
+def calculate_beam_rank(beam_predictions: list[str], ground_truth_sids: list[str]) -> int:
+    for rank, prediction in enumerate(beam_predictions, start=1):
         if extract_sid_tokens(prediction)[:3] == ground_truth_sids:
-            return 1.0 / math.log2(rank + 1), rank
-    return 0.0, 0
+            return rank
+    return 0
+
+
+def calculate_first_token_diversity(beam_predictions: list[str]) -> float:
+    if not beam_predictions:
+        raise ValueError("sid_beam_predictions must not be empty")
+
+    first_tokens = []
+    for prediction in beam_predictions:
+        sid_tokens = extract_sid_tokens(prediction)
+        if not sid_tokens:
+            raise ValueError(f"beam prediction contains no SID tokens: {prediction!r}")
+        first_tokens.append(sid_tokens[0])
+
+    beam_count = len(first_tokens)
+    if beam_count == 1:
+        return 1.0
+    return max(0, len(set(first_tokens)) - 1) / (beam_count - 1)
 
 
 
@@ -66,10 +89,21 @@ class MyRewardComputer:
         if not beam_predictions:
             raise ValueError("sid_beam_predictions are required for NDCG@10 reward")
 
-        ndcg_at_10, beam_rank = calculate_ndcg_at_10(beam_predictions, ground_truth)
+        beam_rank = calculate_beam_rank(beam_predictions, ground_truth)
+        ndcg_at_10 = 1.0 / math.log2(beam_rank + 1) if 0 < beam_rank <= 10 else 0.0
+        rule_reward = float(beam_rank > 0)
+        diversity_reward = calculate_first_token_diversity(beam_predictions)
+        combined_reward = rule_reward * diversity_reward
+        history_sids = (extra_info or {}).get("history_sids")
+        if history_sids is None:
+            history_sids = extract_history_sids_from_question((extra_info or {}).get("question"))
+        process_rewards = calculate_process_rewards(solution_str, history_sids)
         return {
-            "score": ndcg_at_10,
-            "sid_match_reward": ndcg_at_10,
+            "score": combined_reward,
+            "sid_match_reward": combined_reward,
+            "rule_reward": rule_reward,
+            "diversity_reward": diversity_reward,
+            **process_rewards,
             "ndcg_at_10": ndcg_at_10,
             "beam_rank": float(beam_rank),
             "hit_at_1": float(beam_rank == 1),
